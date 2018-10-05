@@ -34,5 +34,19 @@ class Utilities
     {
         return substr(decbin(hexdec(bin2hex($binaryData))), $digit, 1);
     }
+
+    public function convertControllerVolumeToPercent($volume)
+    {
+        $volume = $volume == 0 ? 256 : $volume;
+        $volume = round(($volume - 196.0) / 60.0 * 100.0);
+        return max(0, min(100, $volume));
+    }
+
+    public function convertPercentVolumeToController($volume)
+    {
+        $volume = round($volume / 100.0 * 60.0 + 196.0);
+        $volume = max(196, min(256, $volume));
+        return $volume % 256;
+    }
 }
 ?>

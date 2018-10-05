@@ -2,10 +2,18 @@
 class Controller
 {
     private $appSettings;
+    private $zones;
+    private $commands;
 
     public function __construct()
     {
-        $this->appSettings = json_decode(file_get_contents('config/appSettings.json'), true);
+        $this->appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
+
+        require_once dirname(__FILE__).'/../classes/zones.php';
+        $this->zones = new Zones();
+
+        require_once dirname(__FILE__).'/../classes/commands.php';
+        $this->commands = new Commands();
     }
 
     public function sendCommandToController($command)
@@ -24,18 +32,24 @@ class Controller
         return $response;
     }
 
-    public function convertControllerVolumeToPercent($volume)
+    public function changeVolume($zone, $direction)
     {
-        $volume = $volume == 0 ? 256 : $volume;
-        $volume = round(($volume - 196.0) / 60.0 * 100.0);
-        return max(0, min(100, $volume));
-    }
+        $direction = strtolower($direction);
+        
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        if (!$zoneStates[$zone]['power'])
+        {
+            throw new Exception('Zone is not powered on');
+        }
 
-    public function convertPercentVolumeToController($volume)
-    {
-        $volume = round($volume / 100.0 * 60.0 + 196.0);
-        $volume = max(196, min(256, $volume));
-        return $volume % 256;
+        for ($i = 1; $i <= $this->appSettings['volumeChange']['defaultIncrement']; $i++)
+        {
+            $this->sendCommandToController($direction == 'up' ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
+            usleep($this->appSettings['volumeChange']['delayMilliseconds'] * 1000);
+        }
+
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        return $zoneStates[$zone]['volume'];
     }
 }
 ?>

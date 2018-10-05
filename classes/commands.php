@@ -5,7 +5,7 @@ class Commands
 
     public function __construct() 
     {
-        require_once 'utilities.php';
+        require_once dirname(__FILE__).'/utilities.php';
         $this->utilities = new Utilities();
     }
     
@@ -14,9 +14,9 @@ class Commands
         return hex2bin($this->utilities->getHexCommand($zone, $commandCode, $dataCode));
     }
 
-    public function getZoneState($zone) 
+    public function getZoneStates() 
     {
-        return $this->getCommandBytes($zone, 6, 0);
+        return $this->getCommandBytes(1, 6, 0);
     }    
 
     public function setPower($zone, $power, $allZones = false)
