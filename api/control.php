@@ -2,110 +2,48 @@
 require_once dirname(__FILE__).'/../classes/authentication.php';
 $authentication = new Authentication();
 
-$jsonBody = $authentication->getRequestJSON(file_get_contents('php://input'));
-$authentication->authenticateRequest($jsonBody['authCode']);
+require_once dirname(__FILE__).'/../classes/request-parser.php';
+$requestParser = new RequestParser();
 
 require_once dirname(__FILE__).'/../classes/controller.php';
 $controller = new Controller();
 
-if (!isset($jsonBody['command']))
-{
-    throw new Exception('Command was not specified');
-}
-$command = trim($jsonBody['command']);
+$jsonBody = $authentication->getRequestJSON(file_get_contents('php://input'));
+$authentication->authenticateRequest($jsonBody['authCode']);
 
-$commandsThatAcceptAllZones = array(
-    'getState',
-    'powerOn',
-    'powerOff'
-);
+$requestParser->requestBody = $jsonBody;
+$requestParser->parseRequest();
 
-if (!in_array($command, $commandsThatAcceptAllZones) && !isset($jsonBody['zones']['name']) && !isset($jsonBody['zones']['number']))
-{
-    throw new Exception('Zone was not specified');
-}
-
-$appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
-if (isset($jsonBody['zones']['number']))
-{
-    $zoneNumber = trim($jsonBody['zones']['number']);
-    foreach ($appSettings['zones'] as $zone)
-    {
-        if ($zone['number'] == $zoneNumber)
-        {
-            $matchedZone = $zone['number'];
-        }
-    }
-    
-    if (!isset($matchedZone))
-    {
-        throw new Exception('Unable to find zone by number {'.$zoneNumber.'}');
-    }
-}
-else if (isset($jsonBody['zones']['name']))
-{
-    $zoneName = trim($jsonBody['zones']['name'] ?? null);
-    foreach ($appSettings['zones'] as $zone)
-    {
-        if (strcasecmp($zone['name'], $zoneName) == 0)
-        {
-            $matchedZone = $zone['number'];
-        }
-    }
-    
-        if (!isset($matchedZone))
-    {
-        throw new Exception('Unable to find zone by name {'.$zoneName.'}');
-    }
-}
-
-if (!in_array($command, $commandsThatAcceptAllZones) && !isset($matchedZone))
-{
-    throw new Exception('Unable to determine zone for command');
-}
-
-$exclusiveZone = $jsonBody['zones']['exclusive'] ?? false;
-
-switch ($command) {
+switch ($requestParser->command) {
     case 'getState':
-        echo json_encode($controller->getState($matchedZone ?? null));
+        echo json_encode($controller->getState($requestParser->matchedZone ?? null));
         break;
 
     case 'powerOn':
-        echo $controller->setPower($matchedZone ?? null, true, $exclusiveZone);
+        echo $controller->setPower($requestParser->matchedZone ?? null, true, $requestParser->exclusiveZone);
         break;
 
     case 'powerOff':
-        echo $controller->setPower($matchedZone ?? null, false, $exclusiveZone);
+        echo $controller->setPower($requestParser->matchedZone ?? null, false, $requestParser->exclusiveZone);
         break;
 
     case 'volumeUp':
-        $newVolume = $controller->shiftVolume($matchedZone, 'up');
-        echo 'Zone volume set to {'.$newVolume.'}%';
+        echo $controller->shiftVolume($requestParser->matchedZone, 'up');
         break;
 
     case 'volumeDown':
-        $newVolume = $controller->shiftVolume($matchedZone, 'down');
-        echo 'Zone volume set to {'.$newVolume.'}%';
+        echo $controller->shiftVolume($requestParser->matchedZone, 'down');
         break;
 
     case 'setVolume':
-        $volumePercentage = trim($jsonBody['volume']);
-        if (!isset($volumePercentage))
-        {
-            throw new Exception('Command {'.$command.'} requires volume as an input');
-        }
-        
-        if ($volumePercentage < 0 || $volumePercentage > 100)
-        {
-            throw new Exception('Volume {'.$volumePercentage.'} is not in the valid range');
-        }
-        
-        $newVolume = $controller->setVolume($matchedZone, $volumePercentage);
-        echo 'Zone volume set to {'.$newVolume.'}%';
+        echo $controller->setVolume($requestParser->matchedZone, $requestParser->volumePercentage);
         break;
 
+    case 'setSource':
+        echo $controller->setSource($requestParser->matchedZone, $requestParser->matchedSource);
+        break;        
+
     default:
-        throw new Exception('Command {'.$command.'} is invalid');
+        throw new Exception('Command {'.$requestParser->command.'} is invalid');
 }
 ?>

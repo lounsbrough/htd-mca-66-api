@@ -39,9 +39,9 @@ class Commands
         return $this->getCommandBytes($zone, 4, 34);
     }
     
-    public function setInput($zone, $input) 
+    public function setSource($zone, $source) 
     {
-        return $this->getCommandBytes($zone, 4, 2 + $input);
+        return $this->getCommandBytes($zone, 4, 2 + $source);
     }
 
     public function bassUp($zone) 

@@ -57,7 +57,7 @@ class Controller
         {
             foreach ($this->appSettings['zones'] as $definedZone)
             {
-                if ($definedZone['number'] != $zone)
+                if ($definedZone['enabled'] && $definedZone['number'] != $zone)
                 {
                     $this->sendCommandToController($this->commands->setPower($definedZone['number'], !$power, false));
                 }
@@ -71,7 +71,9 @@ class Controller
     {
         $direction = strtolower($direction);
 
-        return $this->processVolumeShift($zone, ($direction == 'up' ? 1 : -1) * $this->appSettings['volumeChange']['defaultIncrement']);
+        $defaultIncrement = $this->appSettings['volumeChange']['defaultIncrement'];
+        $newVolume = $this->processVolumeShift($zone, ($direction == 'up' ? 1 : -1) * $defaultIncrement);
+        return 'Zone volume set to {'.$newVolume.'}%';
     }
     
     public function setVolume($zone, $volumePercentage)
@@ -82,9 +84,29 @@ class Controller
         $currentVolume = $zoneStates[$zone]['volume'];
         $shift = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
 
-        return $this->processVolumeShift($zone, $shift);
+        $newVolume = $this->processVolumeShift($zone, $shift);
+        return 'Zone volume set to {'.$newVolume.'}%';
     }
     
+    public function setSource($zone, $source)
+    {
+        if ($zone != null) {
+            $this->sendCommandToController($this->commands->setSource($zone, $source));
+        } 
+        else
+        {
+            foreach ($this->appSettings['zones'] as $definedZone)
+            {
+                if ($definedZone['enabled'])
+                {
+                    $this->sendCommandToController($this->commands->setSource($definedZone['number'], $source));
+                }
+            }
+        }
+
+        return ($zone != null ? 'Zone {'.$zone.'}' : 'All zones').' set to source {'.$source.'}';
+    }
+
     private function processVolumeShift($zone, $shift)
     {
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
