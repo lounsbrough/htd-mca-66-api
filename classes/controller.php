@@ -73,6 +73,11 @@ class Controller
             throw new Exception('Zone is not powered on');
         }
         
+        if ($zoneStates[$zone]['volume'] == '')
+        {
+            $shift += 1;
+        }
+        
         for ($i = 1; $i <= abs($shift); $i++)
         {
             $this->sendCommandToController($shift > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
