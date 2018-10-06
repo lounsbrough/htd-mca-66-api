@@ -20,18 +20,25 @@ class Controller
         $this->commands = new Commands();
     }
 
-    public function sendCommandToController($command)
+    public function sendCommandToController($command, $delayMilliseconds = null)
     {
         $hostname = $this->appSettings['controllerGateway']['hostname'];
         $port = $this->appSettings['controllerGateway']['port'];
 
-        $fp = pfsockopen($hostname, $port);
+        try
+        {
+            $fp = pfsockopen($hostname, $port);
 
-        fwrite($fp, $command);
+            fwrite($fp, $command);
 
-        $response = fread($fp, 2048);
+            $response = fread($fp, 2048);
+        }
+        catch (Exception $e) {}
 
         fclose($fp);
+
+        // Ensure controller is not overwhelmed
+        usleep($delayMilliseconds ?? $this->appSettings['defaultDelayMilliseconds'] * 1000);
 
         return $response;
     }
@@ -91,10 +98,10 @@ class Controller
             $shift += 1;
         }
         
+        $delayMilliseconds = $this->appSettings['volumeChange']['defaultDelayMilliseconds'] / max(1, abs($shift) / 10);
         for ($i = 1; $i <= abs($shift); $i++)
         {
-            $this->sendCommandToController($shift > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
-            usleep(($this->appSettings['volumeChange']['defaultDelayMilliseconds'] / max(1, abs($shift) / 10)) * 1000);
+            $this->sendCommandToController($shift > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone), $delayMilliseconds);
         }
         
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
