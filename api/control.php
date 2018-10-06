@@ -2,30 +2,55 @@
 require_once dirname(__FILE__).'/../classes/authentication.php';
 $authentication = new Authentication();
 
-$jsonBody = $authentication->getRequestJSON(file_get_contents("php://input"));
-$authentication->authenticateRequest($jsonBody["authCode"]);
+$jsonBody = $authentication->getRequestJSON(file_get_contents('php://input'));
+$authentication->authenticateRequest($jsonBody['authCode']);
 
 require_once dirname(__FILE__).'/../classes/controller.php';
 $controller = new Controller();
 
 $command = $jsonBody['command'];
-$zone = $jsonBody['zones']['number'];
+if (!isset($command))
+{
+    throw new Exception('Command was not specified');
+}
+
+$zoneDescription = $jsonBody['zones']['name'];
+if (!isset($zoneDescription))
+{
+    throw new Exception('Zone was not specified');
+}
+
+$appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
+
+foreach ($appSettings['zones'] as $zone)
+{
+    if (strtolower($zone['description']) == strtolower($zoneDescription))
+    {
+        $zoneNumber = $zone['number'];
+    }
+}
+
+if (!isset($zoneNumber))
+{
+    throw new Exception('Unable to find zone {'.$zoneDescription.'}');
+}
+
 switch ($command) {
     case 'powerOn':
-        $controller->setPower($zone, true);
-        echo 'Zone {'.$zone.'} powered on';
+        $controller->setPower($zoneNumber, true);
+        echo 'Zone powered on';
         break;
     case 'powerOff':
-        $controller->setPower($zone, false);
-        echo 'Zone {'.$zone.'} powered off';
+        $controller->setPower($zoneNumber, false);
+        echo 'Zone powered off';
         break;
     case 'volumeUp':
-        $newVolume = $controller->shiftVolume($zone, 'up');
-        echo 'Zone {'.$zone.'} volume set to {'.$newVolume.'}%';
+        $newVolume = $controller->shiftVolume($zoneNumber, 'up');
+        echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     case 'volumeDown':
-        $newVolume = $controller->shiftVolume($zone, 'down');
-        echo 'Zone {'.$zone.'} volume set to {'.$newVolume.'}%';
+        $newVolume = $controller->shiftVolume($zoneNumber, 'down');
+        echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     case 'setVolume':
         $volumePercentage = $jsonBody['volume'];
@@ -39,8 +64,8 @@ switch ($command) {
             throw new Exception('Volume {'.$volumePercentage.'} is not in the valid range');
         }
         
-        $newVolume = $controller->setVolume($zone, $volumePercentage);
-        echo 'Zone {'.$zone.'} volume set to {'.$newVolume.'}%';
+        $newVolume = $controller->setVolume($zoneNumber, $volumePercentage);
+        echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     default:
         throw new Exception('Command {'.$command.'} is invalid');
