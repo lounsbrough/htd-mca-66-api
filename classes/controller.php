@@ -42,9 +42,22 @@ class Controller
         return !isset($zone) ? $zoneStates : $zoneStates[$zone];
     }
     
-    public function setPower($zone, $power)
+    public function setPower($zone, $power, $exclusive = false)
     {
         $this->sendCommandToController($this->commands->setPower($zone, $power, $zone != null ? false : true));
+
+        if ($exclusive)
+        {
+            foreach ($this->appSettings['zones'] as $definedZone)
+            {
+                if ($definedZone['number'] != $zone)
+                {
+                    $this->sendCommandToController($this->commands->setPower($definedZone['number'], !$power, false));
+                }
+            }
+        }
+
+        return $zone != null ? 'Zone {'.$zone.'} powered '.($power ? 'on' : 'off').($exclusive ? ' exclusively' : '') : 'All zones powered '.($power ? 'on' : 'off');
     }
 
     public function shiftVolume($zone, $direction)

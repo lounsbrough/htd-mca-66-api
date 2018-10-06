@@ -64,26 +64,31 @@ if (!in_array($command, $commandsThatAcceptAllZones) && !isset($matchedZone))
     throw new Exception('Unable to determine zone for command');
 }
 
+$exclusiveZone = $jsonBody['zones']['exclusive'] ?? false;
+
 switch ($command) {
     case 'getState':
         echo json_encode($controller->getState($matchedZone ?? null));
         break;
+
     case 'powerOn':
-        echo $controller->setPower($matchedZone ?? null, true);
-        echo isset($matchedZone) ? 'Zone powered on' : 'All zones powered on';
+        echo $controller->setPower($matchedZone ?? null, true, $exclusiveZone);
         break;
+
     case 'powerOff':
-        echo $controller->setPower($matchedZone ?? null, false);
-        echo isset($matchedZone) ? 'Zone powered off' : 'All zones powered off';
+        echo $controller->setPower($matchedZone ?? null, false, $exclusiveZone);
         break;
+
     case 'volumeUp':
         $newVolume = $controller->shiftVolume($matchedZone, 'up');
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
+
     case 'volumeDown':
         $newVolume = $controller->shiftVolume($matchedZone, 'down');
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
+
     case 'setVolume':
         $volumePercentage = trim($jsonBody['volume']);
         if (!isset($volumePercentage))
@@ -99,6 +104,7 @@ switch ($command) {
         $newVolume = $controller->setVolume($matchedZone, $volumePercentage);
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
+
     default:
         throw new Exception('Command {'.$command.'} is invalid');
 }
