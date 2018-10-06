@@ -8,7 +8,8 @@ class Controller
 
     public function __construct()
     {
-        $this->appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
+        require_once dirname(__FILE__).'/app-settings.php';
+        $this->appSettings = new AppSettings();
 
         require_once dirname(__FILE__).'/utilities.php';
         $this->utilities = new Utilities();
@@ -22,8 +23,8 @@ class Controller
 
     public function sendCommandToController($command, $delayMilliseconds = null)
     {
-        $hostname = $this->appSettings['controllerGateway']['hostname'];
-        $port = $this->appSettings['controllerGateway']['port'];
+        $hostname = $this->appSettings->allSettings['controllerGateway']['hostname'];
+        $port = $this->appSettings->allSettings['controllerGateway']['port'];
 
         try
         {
@@ -38,96 +39,129 @@ class Controller
         fclose($fp);
 
         // Ensure controller is not overwhelmed
-        usleep($delayMilliseconds ?? $this->appSettings['defaultDelayMilliseconds'] * 1000);
+        usleep($delayMilliseconds ?? $this->appSettings->allSettings['defaultDelayMilliseconds'] * 1000);
 
         return $response;
     }
     
-    public function getState($zone)
-    {
+    public function getState($zones)
+    {        
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-        return !isset($zone) ? $zoneStates : $zoneStates[$zone];
+
+        if ($zones != null) {
+            foreach ($zoneStates as $key => $zoneState)
+            {
+                if (!in_array($zoneState['number'], $zones)) {
+                    unset($zoneStates[$key]);
+                }
+            }
+        }
+
+        return $zoneStates;
     }
     
-    public function setPower($zone, $power, $exclusive = false)
+    public function setPower($zones, $power, $exclusive = false)
     {
-        $this->sendCommandToController($this->commands->setPower($zone, $power, $zone != null ? false : true));
+        foreach ($zones as $zone) 
+        {
+            $this->sendCommandToController($this->commands->setPower($zone, $power, $zone != null ? false : true));
+        }
 
         if ($exclusive)
         {
-            foreach ($this->appSettings['zones'] as $definedZone)
+            foreach ($this->appSettings->enabledZones as $definedZone)
             {
-                if ($definedZone['enabled'] && $definedZone['number'] != $zone)
+                if (!in_array($definedZone['number'], $zones))
                 {
                     $this->sendCommandToController($this->commands->setPower($definedZone['number'], !$power, false));
                 }
             }
         }
 
-        return $zone != null ? 'Zone {'.$zone.'} powered '.($power ? 'on' : 'off').($exclusive ? ' exclusively' : '') : 'All zones powered '.($power ? 'on' : 'off');
+        return $zones != null ? 'Zones {'.implode($zones, ',').'} powered '.($power ? 'on' : 'off').($exclusive ? ' exclusively' : '') : 'All zones powered '.($power ? 'on' : 'off');
     }
 
-    public function shiftVolume($zone, $direction)
+    public function shiftVolume($zones, $direction)
     {
         $direction = strtolower($direction);
+        $defaultIncrement = $this->appSettings->allSettings['volumeChange']['defaultIncrement'];
+        
+        $shift = ($direction == 'up' ? 1 : -1) * $defaultIncrement;
+        $this->processVolumeShift($zones, array_fill(0, count($zones), $shift));
 
-        $defaultIncrement = $this->appSettings['volumeChange']['defaultIncrement'];
-        $newVolume = $this->processVolumeShift($zone, ($direction == 'up' ? 1 : -1) * $defaultIncrement);
-        return 'Zone volume set to {'.$newVolume.'}%';
+        return 'Zones {'.implode($zones, ',').'} volume turned '.$direction;
     }
     
-    public function setVolume($zone, $volumePercentage)
+    public function setVolume($zones, $volumePercentage)
     {
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-     
-        $volumeConversionFactor = $this->appSettings['volumeParameters']['percentageConversionFactor'];
-        $currentVolume = $zoneStates[$zone]['volume'];
-        $shift = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
+        $volumeConversionFactor = $this->appSettings->allSettings['volumeParameters']['percentageConversionFactor'];
 
-        $newVolume = $this->processVolumeShift($zone, $shift);
-        return 'Zone volume set to {'.$newVolume.'}%';
+        $shifts = array();
+        foreach ($zones as $zone)
+        {
+            $currentVolume = $zoneStates[$zone]['volume'];
+            $shifts[] = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
+        }
+
+        $this->processVolumeShift($zones, $shifts);
+
+        return 'Zones {'.implode($zones, ',').'} volume set to {'.$volumePercentage.'}%';
     }
     
-    public function setSource($zone, $source)
+    public function setSource($zones, $source)
     {
-        if ($zone != null) {
-            $this->sendCommandToController($this->commands->setSource($zone, $source));
+        if ($zones != null) {
+            foreach ($zones as $zone)
+            {
+                $this->sendCommandToController($this->commands->setSource($zone, $source));
+            }
         } 
         else
         {
-            foreach ($this->appSettings['zones'] as $definedZone)
+            $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+            foreach ($this->appSettings->enabledZones as $definedZone)
             {
-                if ($definedZone['enabled'])
-                {
-                    $this->sendCommandToController($this->commands->setSource($definedZone['number'], $source));
-                }
+                $zonePoweredOn = $zoneStates[$definedZone['number']]['power'];
+                
+                if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($definedZone['number'], true));
+                $this->sendCommandToController($this->commands->setSource($definedZone['number'], $source));
+                if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($definedZone['number'], false));
             }
         }
 
-        return ($zone != null ? 'Zone {'.$zone.'}' : 'All zones').' set to source {'.$source.'}';
+        return ($zones != null ? 'Zones {'.implode($zones, ',').'}' : 'All zones').' set to source {'.$source.'}';
     }
 
-    private function processVolumeShift($zone, $shift)
+    private function processVolumeShift($zones, $shifts)
     {
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-        if (!$zoneStates[$zone]['power'])
+        $defaultDelayMilliseconds =$this->appSettings->allSettings['volumeChange']['defaultDelayMilliseconds'];
+
+        foreach ($shifts as $shift)
         {
-            throw new Exception('Zone is not powered on');
+            $delayMilliseconds[] = $defaultDelayMilliseconds / max(1, abs($shift) / 10);
         }
-        
-        if ($zoneStates[$zone]['volume'] == '')
-        {
-            $shift += 1;
+
+        while (max(array_map('abs', $shifts)) > 0) {
+            foreach ($zones as $key => $zone)
+            {
+                if ($shifts[$key] == 0)
+                {
+                    continue;
+                }
+
+                if (!$zoneStates[$zone]['power'])
+                {
+                    $shifts[$key] = 0;
+                    continue;
+                }
+
+                $this->sendCommandToController($shifts[$key] > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone), $delayMilliseconds[$key]);
+
+                $shifts[$key] += ($shifts[$key] > 0 ? -1 : 1);
+            }
         }
-        
-        $delayMilliseconds = $this->appSettings['volumeChange']['defaultDelayMilliseconds'] / max(1, abs($shift) / 10);
-        for ($i = 1; $i <= abs($shift); $i++)
-        {
-            $this->sendCommandToController($shift > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone), $delayMilliseconds);
-        }
-        
-        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-        return $zoneStates[$zone]['volume'];
     }
 }
 ?>

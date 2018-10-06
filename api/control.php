@@ -16,31 +16,31 @@ $requestParser->parseRequest();
 
 switch ($requestParser->command) {
     case 'getState':
-        echo json_encode($controller->getState($requestParser->matchedZone ?? null));
+        echo json_encode($controller->getState($requestParser->matchedZones ?? null));
         break;
 
     case 'powerOn':
-        echo $controller->setPower($requestParser->matchedZone ?? null, true, $requestParser->exclusiveZone);
+        echo $controller->setPower($requestParser->matchedZones ?? null, true, $requestParser->exclusiveZones);
         break;
 
     case 'powerOff':
-        echo $controller->setPower($requestParser->matchedZone ?? null, false, $requestParser->exclusiveZone);
+        echo $controller->setPower($requestParser->matchedZones ?? null, false, $requestParser->exclusiveZones);
         break;
 
     case 'volumeUp':
-        echo $controller->shiftVolume($requestParser->matchedZone, 'up');
+        echo $controller->shiftVolume($requestParser->matchedZones, 'up');
         break;
 
     case 'volumeDown':
-        echo $controller->shiftVolume($requestParser->matchedZone, 'down');
+        echo $controller->shiftVolume($requestParser->matchedZones, 'down');
         break;
 
     case 'setVolume':
-        echo $controller->setVolume($requestParser->matchedZone, $requestParser->volumePercentage);
+        echo $controller->setVolume($requestParser->matchedZones, $requestParser->volumePercentage);
         break;
 
     case 'setSource':
-        echo $controller->setSource($requestParser->matchedZone, $requestParser->matchedSource);
+        echo $controller->setSource($requestParser->matchedZones, $requestParser->matchedSource);
         break;        
 
     default:

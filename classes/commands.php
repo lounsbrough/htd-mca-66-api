@@ -41,7 +41,7 @@ class Commands
     
     public function setSource($zone, $source) 
     {
-        return $this->getCommandBytes($zone, 4, 2 + $source);
+        return $this->getCommandBytes($zone, 4, 2 + (int)$source);
     }
 
     public function bassUp($zone) 
