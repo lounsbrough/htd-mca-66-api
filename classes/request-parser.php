@@ -55,26 +55,15 @@ class RequestParser
         $this->matchedZones = array();
         foreach ($this->requestBody['zones'] as $zone)
         {
-            if (isset($zone['number']))
+            foreach ($this->appSettings->enabledZones as $definedZone)
             {
-                $zoneNumber = trim($zone['number']);
-                foreach ($this->appSettings->enabledZones as $definedZone)
+                if (isset($zone['number']) && $definedZone['number'] == $zone['number'])
                 {
-                    if ($definedZone['number'] == $zoneNumber)
-                    {
-                        $this->matchedZones[] = $definedZone['number'];
-                    }
+                    $this->matchedZones[] = $definedZone['number'];
                 }
-            }
-            else if (isset($zone['name']))
-            {
-                $zoneName = trim($zone['name']);
-                foreach ($this->appSettings->enabledZones as $definedZone)
+                else if (isset($zone['name']) && strcasecmp($definedZone['name'], $zone['name']) == 0)
                 {
-                    if (strcasecmp($definedZone['name'], $zoneName) == 0)
-                    {
-                        $this->matchedZones[] = $definedZone['number'];
-                    }
+                    $this->matchedZones[] = $definedZone['number'];
                 }
             }
         }
@@ -96,37 +85,22 @@ class RequestParser
                 throw new Exception('Command {'.$this->command.'} requires source as an input');
             }
 
-            if (isset($this->requestBody['source']['number']))
+            $requestSource = $this->requestBody['source'];
+            foreach ($this->appSettings->enabledSources as $definedSource)
             {
-                $sourceNumber = trim($this->requestBody['source']['number']);
-                foreach ($this->appSettings->enabledSources as $definedSource)
+                if (isset($requestSource['number']) && $definedSource['number'] == $requestSource['number'])
                 {
-                    if ($definedSource['number'] == $sourceNumber)
-                    {
-                        $this->matchedSource = $definedSource['number'];
-                    }
+                    $this->matchedSource = $definedSource['number'];
                 }
-                
-                if (!isset($this->matchedSource))
+                else if (isset($requestSource['name']) && strcasecmp($definedSource['name'], $requestSource['name']) == 0)
                 {
-                    throw new Exception('Unable to find source by number {'.$sourceNumber.'}');
+                    $this->matchedSource = $definedSource['number'];
                 }
             }
-            else if (isset($this->requestBody['source']['name']))
+
+            if (!isset($this->matchedSource))
             {
-                $sourceName = trim($this->requestBody['source']['name']);
-                foreach ($this->appSettings->enabledSources as $definedSource)
-                {
-                    if (strcasecmp($definedSource['name'], $sourceName) == 0)
-                    {
-                        $this->matchedSource = $definedSource['number'];
-                    }
-                }
-                
-                    if (!isset($this->matchedSource))
-                {
-                    throw new Exception('Unable to find source by name {'.$sourceName.'}');
-                }
+                throw new Exception('Unable to find any zones for command');
             }
         }
     }
