@@ -53,6 +53,18 @@ class RequestParser
         }
 
         $this->matchedZones = array();
+        $this->findMatchingZones();
+        
+        if (!in_array($this->command, $commandsThatAcceptAllZones) && $this->matchedZones == array())
+        {
+            throw new Exception('Unable to find any zones for command');
+        }
+
+        $this->exclusiveZones = $this->requestBody['exclusiveZones'] ?? false;
+    }
+
+    private function findMatchingZones()
+    {
         foreach ($this->requestBody['zones'] as $zone)
         {
             foreach ($this->appSettings->enabledZones as $definedZone)
@@ -67,13 +79,6 @@ class RequestParser
                 }
             }
         }
-        
-        if (!in_array($this->command, $commandsThatAcceptAllZones) && $this->matchedZones == array())
-        {
-            throw new Exception('Unable to find any zones for command');
-        }
-
-        $this->exclusiveZones = $this->requestBody['exclusiveZones'] ?? false;
     }
 
     private function validateSource()
@@ -85,22 +90,27 @@ class RequestParser
                 throw new Exception('Command {'.$this->command.'} requires source as an input');
             }
 
-            $requestSource = $this->requestBody['source'];
-            foreach ($this->appSettings->enabledSources as $definedSource)
-            {
-                if (isset($requestSource['number']) && $definedSource['number'] == $requestSource['number'])
-                {
-                    $this->matchedSource = $definedSource['number'];
-                }
-                else if (isset($requestSource['name']) && strcasecmp($definedSource['name'], $requestSource['name']) == 0)
-                {
-                    $this->matchedSource = $definedSource['number'];
-                }
-            }
+            $this->findMatchingSource();
 
             if (!isset($this->matchedSource))
             {
                 throw new Exception('Unable to find any zones for command');
+            }
+        }
+    }
+
+    private function findMatchingSource()
+    {
+        $source = $this->requestBody['source'];
+        foreach ($this->appSettings->enabledSources as $definedSource)
+        {
+            if (isset($source['number']) && $definedSource['number'] == $source['number'])
+            {
+                $this->matchedSource = $definedSource['number'];
+            }
+            else if (isset($source['name']) && strcasecmp($definedSource['name'], $source['name']) == 0)
+            {
+                $this->matchedSource = $definedSource['number'];
             }
         }
     }
