@@ -47,7 +47,7 @@ else if (isset($jsonBody['zones']['name']))
     $zoneName = trim($jsonBody['zones']['name'] ?? null);
     foreach ($appSettings['zones'] as $zone)
     {
-        if (strtolower($zone['name']) == strtolower($zoneName))
+        if (strcasecmp($zone['name'], $zoneName) == 0)
         {
             $matchedZone = $zone['number'];
         }
