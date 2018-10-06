@@ -12,11 +12,11 @@ $command = $jsonBody['command'];
 $zone = $jsonBody['zones']['number'];
 switch ($command) {
     case 'volumeUp':
-        $newVolume = $controller->changeVolume($zone, 'up');
+        $newVolume = $controller->shiftVolume($zone, 'up');
         echo 'Volume set to {'.$newVolume.'}%';
         break;
     case 'volumeDown':
-        $newVolume = $controller->changeVolume($zone, 'down');
+        $newVolume = $controller->shiftVolume($zone, 'down');
         echo 'Volume set to {'.$newVolume.'}%';
         break;
     default:

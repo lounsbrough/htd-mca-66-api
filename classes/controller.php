@@ -32,7 +32,7 @@ class Controller
         return $response;
     }
 
-    public function changeVolume($zone, $direction)
+    public function shiftVolume($zone, $direction, $percentage)
     {
         $direction = strtolower($direction);
         
