@@ -8,48 +8,80 @@ $authentication->authenticateRequest($jsonBody['authCode']);
 require_once dirname(__FILE__).'/../classes/controller.php';
 $controller = new Controller();
 
-$command = trim($jsonBody['command']);
-if (!isset($command))
+if (!isset($jsonBody['command']))
 {
     throw new Exception('Command was not specified');
 }
+$command = trim($jsonBody['command']);
 
-$zoneDescription = trim($jsonBody['zones']['name']);
-if (!isset($zoneDescription))
+$commandsThatAcceptAllZones = array(
+    'getState',
+    'powerOn',
+    'powerOff'
+);
+
+if (!in_array($command, $commandsThatAcceptAllZones) && !isset($jsonBody['zones']['name']) && !isset($jsonBody['zones']['number']))
 {
     throw new Exception('Zone was not specified');
 }
 
 $appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
-
-foreach ($appSettings['zones'] as $zone)
+if (isset($jsonBody['zones']['number']))
 {
-    if (strtolower($zone['description']) == strtolower($zoneDescription))
+    $zoneNumber = trim($jsonBody['zones']['number']);
+    foreach ($appSettings['zones'] as $zone)
     {
-        $zoneNumber = $zone['number'];
+        if ($zone['number'] == $zoneNumber)
+        {
+            $matchedZone = $zone['number'];
+        }
+    }
+    
+    if (!isset($matchedZone))
+    {
+        throw new Exception('Unable to find zone by number {'.$zoneNumber.'}');
+    }
+}
+else if (isset($jsonBody['zones']['name']))
+{
+    $zoneName = trim($jsonBody['zones']['name'] ?? null);
+    foreach ($appSettings['zones'] as $zone)
+    {
+        if (strtolower($zone['name']) == strtolower($zoneName))
+        {
+            $matchedZone = $zone['number'];
+        }
+    }
+    
+        if (!isset($matchedZone))
+    {
+        throw new Exception('Unable to find zone by name {'.$zoneName.'}');
     }
 }
 
-if (!isset($zoneNumber))
+if (!in_array($command, $commandsThatAcceptAllZones) && !isset($matchedZone))
 {
-    throw new Exception('Unable to find zone {'.$zoneDescription.'}');
+    throw new Exception('Unable to determine zone for command');
 }
 
 switch ($command) {
+    case 'getState':
+        echo json_encode($controller->getState($matchedZone ?? null));
+        break;
     case 'powerOn':
-        $controller->setPower($zoneNumber, true);
-        echo 'Zone powered on';
+        echo $controller->setPower($matchedZone ?? null, true);
+        echo isset($matchedZone) ? 'Zone powered on' : 'All zones powered on';
         break;
     case 'powerOff':
-        $controller->setPower($zoneNumber, false);
-        echo 'Zone powered off';
+        echo $controller->setPower($matchedZone ?? null, false);
+        echo isset($matchedZone) ? 'Zone powered off' : 'All zones powered off';
         break;
     case 'volumeUp':
-        $newVolume = $controller->shiftVolume($zoneNumber, 'up');
+        $newVolume = $controller->shiftVolume($matchedZone, 'up');
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     case 'volumeDown':
-        $newVolume = $controller->shiftVolume($zoneNumber, 'down');
+        $newVolume = $controller->shiftVolume($matchedZone, 'down');
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     case 'setVolume':
@@ -64,7 +96,7 @@ switch ($command) {
             throw new Exception('Volume {'.$volumePercentage.'} is not in the valid range');
         }
         
-        $newVolume = $controller->setVolume($zoneNumber, $volumePercentage);
+        $newVolume = $controller->setVolume($matchedZone, $volumePercentage);
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     default:

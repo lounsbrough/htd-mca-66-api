@@ -21,7 +21,7 @@ class Commands
 
     public function setPower($zone, $power, $allZones = false)
     {
-        return $this->getCommandBytes($zone, 4, $power ? (!$allZones ? 32 : 56) : (!$allZones ? 33 : 57));
+        return $this->getCommandBytes((!$allZones ? $zone : 1), 4, $power ? (!$allZones ? 32 : 56) : (!$allZones ? 33 : 57));
     }
     
     public function volumeUp($zone)

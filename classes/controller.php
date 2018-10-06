@@ -36,9 +36,15 @@ class Controller
         return $response;
     }
     
+    public function getState($zone)
+    {
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        return !isset($zone) ? $zoneStates : $zoneStates[$zone];
+    }
+    
     public function setPower($zone, $power)
     {
-        $this->sendCommandToController($this->commands->setPower($zone, $power));
+        $this->sendCommandToController($this->commands->setPower($zone, $power, $zone != null ? false : true));
     }
 
     public function shiftVolume($zone, $direction)
