@@ -2,7 +2,7 @@
 require_once dirname(__FILE__).'/../classes/authentication.php';
 $authentication = new Authentication();
 
-$jsonBody = $authentication->getRequestJSON($_SERVER, file_get_contents("php://input"));
+$jsonBody = $authentication->getRequestJSON(file_get_contents("php://input"));
 $authentication->authenticateRequest($jsonBody["authCode"]);
 
 require_once dirname(__FILE__).'/../classes/controller.php';
@@ -29,9 +29,14 @@ switch ($command) {
         break;
     case 'setVolume':
         $volumePercentage = $jsonBody['volume'];
-        if (!$volumePercentage)
+        if (!isset($volumePercentage))
         {
             throw new Exception('Command {'.$command.'} requires volume as an input');
+        }
+        
+        if ($volumePercentage < 0 || $volumePercentage > 100)
+        {
+            throw new Exception('Volume {'.$volumePercentage.'} is not in the valid range');
         }
         
         $newVolume = $controller->setVolume($zone, $volumePercentage);

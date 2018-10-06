@@ -1,14 +1,14 @@
 <?php
 class Authentication 
 {
-    public function getRequestJSON($serverObject, $requestInput)
+    public function getRequestJSON($requestInput)
     {
-        if (strcasecmp($serverObject['REQUEST_METHOD'], 'POST') != 0)
+        if (strcasecmp(filter_input(INPUT_SERVER, 'REQUEST_METHOD'), 'POST') != 0)
         {
             throw new Exception('Request method must be POST');
         }
     
-        $contentType = isset($serverObject["CONTENT_TYPE"]) ? trim($serverObject["CONTENT_TYPE"]) : '';
+        $contentType = filter_input(INPUT_SERVER, 'CONTENT_TYPE') !== null ? trim(filter_input(INPUT_SERVER, 'CONTENT_TYPE')) : '';
         if (strcasecmp($contentType, 'application/json') != 0)
         {
             throw new Exception('Content type must be: application/json');

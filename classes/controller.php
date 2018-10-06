@@ -44,24 +44,22 @@ class Controller
     public function shiftVolume($zone, $direction)
     {
         $direction = strtolower($direction);
-        
-        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-        if (!$zoneStates[$zone]['power'])
-        {
-            throw new Exception('Zone is not powered on');
-        }
 
-        for ($i = 1; $i <= $this->appSettings['volumeChange']['defaultIncrement']; $i++)
-        {
-            $this->sendCommandToController($direction == 'up' ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
-            usleep($this->appSettings['volumeChange']['delayMilliseconds'] * 1000);
-        }
-
-        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-        return $zoneStates[$zone]['volume'];
+        return $this->processVolumeShift($zone, ($direction == 'up' ? 1 : -1) * $this->appSettings['volumeChange']['defaultIncrement']);
     }
     
     public function setVolume($zone, $volumePercentage)
+    {
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+     
+        $volumeConversionFactor = $this->appSettings['volumeParameters']['percentageConversionFactor'];
+        $currentVolume = $zoneStates[$zone]['volume'];
+        $shift = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
+
+        return $this->processVolumeShift($zone, $shift);
+    }
+    
+    private function processVolumeShift($zone, $shift)
     {
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
         if (!$zoneStates[$zone]['power'])
@@ -69,16 +67,12 @@ class Controller
             throw new Exception('Zone is not powered on');
         }
         
-        $volumeConversionFactor = $this->appSettings['volumeParameters']['percentageConversionFactor'];
-        $currentVolume = $zoneStates[$zone]['volume'];
-        $totalMovement = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
-
-        for ($i = 1; $i <= abs($totalMovement); $i++)
+        for ($i = 1; $i <= abs($shift); $i++)
         {
-            $this->sendCommandToController($totalMovement > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
-            usleep(($this->appSettings['volumeChange']['delayMilliseconds'] / max(1, abs($totalMovement) / 10)) * 1000);
+            $this->sendCommandToController($shift > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
+            usleep(($this->appSettings['volumeChange']['defaultDelayMilliseconds'] / max(1, abs($shift) / 10)) * 1000);
         }
-
+        
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
         return $zoneStates[$zone]['volume'];
     }
