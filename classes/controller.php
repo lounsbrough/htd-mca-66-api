@@ -62,20 +62,27 @@ class Controller
     
     public function setPower($zones, $power, $exclusive = false)
     {
-        foreach ($zones as $zone) 
+        if ($zones != null)
         {
-            $this->sendCommandToController($this->commands->setPower($zone, $power, $zone != null ? false : true));
-        }
-
-        if ($exclusive)
-        {
-            foreach ($this->appSettings->enabledZones as $definedZone)
+            foreach ($zones as $zone) 
             {
-                if (!in_array($definedZone['number'], $zones))
+                $this->sendCommandToController($this->commands->setPower($zone, $power, false));
+            }
+
+            if ($exclusive)
+            {
+                foreach ($this->appSettings->enabledZones as $definedZone)
                 {
-                    $this->sendCommandToController($this->commands->setPower($definedZone['number'], !$power, false));
+                    if (!in_array($definedZone['number'], $zones))
+                    {
+                        $this->sendCommandToController($this->commands->setPower($definedZone['number'], !$power, false));
+                    }
                 }
             }
+        }
+        else 
+        {
+            $this->sendCommandToController($this->commands->setPower(null, $power, true));
         }
 
         return $zones != null ? 'Zones {'.implode($zones, ',').'} powered '.($power ? 'on' : 'off').($exclusive ? ' exclusively' : '') : 'All zones powered '.($power ? 'on' : 'off');
