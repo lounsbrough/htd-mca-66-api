@@ -8,13 +8,13 @@ $authentication->authenticateRequest($jsonBody['authCode']);
 require_once dirname(__FILE__).'/../classes/controller.php';
 $controller = new Controller();
 
-$command = $jsonBody['command'];
+$command = trim($jsonBody['command']);
 if (!isset($command))
 {
     throw new Exception('Command was not specified');
 }
 
-$zoneDescription = $jsonBody['zones']['name'];
+$zoneDescription = trim($jsonBody['zones']['name']);
 if (!isset($zoneDescription))
 {
     throw new Exception('Zone was not specified');
@@ -53,7 +53,7 @@ switch ($command) {
         echo 'Zone volume set to {'.$newVolume.'}%';
         break;
     case 'setVolume':
-        $volumePercentage = $jsonBody['volume'];
+        $volumePercentage = trim($jsonBody['volume']);
         if (!isset($volumePercentage))
         {
             throw new Exception('Command {'.$command.'} requires volume as an input');
