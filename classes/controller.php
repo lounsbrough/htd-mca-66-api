@@ -2,6 +2,7 @@
 class Controller
 {
     private $appSettings;
+    private $utilities;
     private $zones;
     private $commands;
 
@@ -9,10 +10,13 @@ class Controller
     {
         $this->appSettings = json_decode(file_get_contents(dirname(__FILE__).'/../config/appSettings.json'), true);
 
-        require_once dirname(__FILE__).'/../classes/zones.php';
+        require_once dirname(__FILE__).'/utilities.php';
+        $this->utilities = new Utilities();
+        
+        require_once dirname(__FILE__).'/zones.php';
         $this->zones = new Zones();
 
-        require_once dirname(__FILE__).'/../classes/commands.php';
+        require_once dirname(__FILE__).'/commands.php';
         $this->commands = new Commands();
     }
 
@@ -31,8 +35,13 @@ class Controller
 
         return $response;
     }
+    
+    public function setPower($zone, $power)
+    {
+        $this->sendCommandToController($this->commands->setPower($zone, $power));
+    }
 
-    public function shiftVolume($zone, $direction, $percentage)
+    public function shiftVolume($zone, $direction)
     {
         $direction = strtolower($direction);
         
@@ -46,6 +55,28 @@ class Controller
         {
             $this->sendCommandToController($direction == 'up' ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
             usleep($this->appSettings['volumeChange']['delayMilliseconds'] * 1000);
+        }
+
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        return $zoneStates[$zone]['volume'];
+    }
+    
+    public function setVolume($zone, $volumePercentage)
+    {
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        if (!$zoneStates[$zone]['power'])
+        {
+            throw new Exception('Zone is not powered on');
+        }
+        
+        $volumeConversionFactor = $this->appSettings['volumeParameters']['percentageConversionFactor'];
+        $currentVolume = $zoneStates[$zone]['volume'];
+        $totalMovement = round(($volumePercentage - $currentVolume) * $volumeConversionFactor);
+
+        for ($i = 1; $i <= abs($totalMovement); $i++)
+        {
+            $this->sendCommandToController($totalMovement > 0 ? $this->commands->volumeUp($zone) : $this->commands->volumeDown($zone));
+            usleep(($this->appSettings['volumeChange']['delayMilliseconds'] / max(1, abs($totalMovement) / 10)) * 1000);
         }
 
         $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));

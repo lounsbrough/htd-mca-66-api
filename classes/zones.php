@@ -1,7 +1,6 @@
 <?php
 class Zones
 {
-    private $controller;
     private $utilities;
 
     public function __construct() 
