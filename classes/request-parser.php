@@ -84,7 +84,7 @@ class RequestParser
             throw new Exception('Unable to find any zones for command');
         }
 
-        $this->exclusiveZones = $this->requestBody['zones']['exclusive'] ?? false;
+        $this->exclusiveZones = $this->requestBody['exclusiveZones'] ?? false;
     }
 
     private function validateSource()
