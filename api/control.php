@@ -9,7 +9,7 @@ require_once dirname(__FILE__).'/../classes/controller.php';
 $controller = new Controller();
 
 $jsonBody = $authentication->getRequestJSON(file_get_contents('php://input'));
-$authentication->authenticateRequest($jsonBody['authCode']);
+$authentication->authenticateRequest($jsonBody);
 
 $requestParser->requestBody = $jsonBody;
 $requestParser->parseRequest();

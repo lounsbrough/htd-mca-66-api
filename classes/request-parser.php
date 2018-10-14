@@ -25,7 +25,7 @@ class RequestParser
 
     private function validateCommand()
     {
-        if (!isset($this->requestBody['command']))
+        if (empty($this->requestBody['command']))
         {
             throw new Exception('Command was not specified');
         }
@@ -42,7 +42,7 @@ class RequestParser
             'setSource'
         );
 
-        if (!isset($this->requestBody['zones']))
+        if (empty($this->requestBody['zones']))
         {
             if (!in_array($this->command, $commandsThatAcceptAllZones))
             {
@@ -85,7 +85,7 @@ class RequestParser
     {
         if ($this->command == 'setSource')
         {
-            if (!isset($this->requestBody['source']))
+            if (empty($this->requestBody['source']))
             {
                 throw new Exception('Command {'.$this->command.'} requires source as an input');
             }
@@ -119,7 +119,7 @@ class RequestParser
     {
         if ($this->command == 'setVolume')
         {
-            if (!isset($this->requestBody['volume']))
+            if (empty($this->requestBody['volume']))
             {
                 throw new Exception('Command {'.$this->command.'} requires volume as an input');
             }

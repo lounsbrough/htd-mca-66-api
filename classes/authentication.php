@@ -25,9 +25,9 @@ class Authentication
         return $jsonBody;
     }
 
-    public function authenticateRequest($authenticationCode)
+    public function authenticateRequest($jsonBody)
     {    
-        if ($authenticationCode != getenv('HTTPS_AUTHENTICATION_SECRET')) 
+        if (!isset($jsonBody['authCode']) || $jsonBody['authCode'] != getenv('HTTPS_AUTHENTICATION_SECRET')) 
         {
             throw new Exception('Auth Code is invalid');
         }
