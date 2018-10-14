@@ -4,10 +4,10 @@ Rest API built around HTD's MCA-66 controller
 Sample Request JSON:
 ```json
 { 
-	"authCode": "********", 
-	"command": "volumeUp",
-	"zones": {
-		"name": "Workout Room"
-	}
+    "authCode": "********", 
+    "command": "volumeUp",
+    "zones": {
+        "name": "Workout Room"
+    }
 }
 ```
