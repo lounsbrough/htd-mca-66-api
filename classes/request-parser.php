@@ -54,10 +54,15 @@ class RequestParser
 
         $this->matchedZones = array();
         $this->findMatchingZones();
-        
-        if (!in_array($this->command, $commandsThatAcceptAllZones) && $this->matchedZones == array())
+
+        if (!in_array($this->command, $commandsThatAcceptAllZones) && empty($this->matchedZones))
         {
             throw new Exception('Unable to find any zones for command');
+        }
+
+        if (!empty($this->requestBody['zones']) && empty($this->matchedZones))
+        {
+            throw new Exception('Zone parameter specified but no matching zones found');
         }
 
         $this->exclusiveZones = $this->requestBody['exclusiveZones'] ?? false;
