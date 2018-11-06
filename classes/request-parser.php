@@ -99,7 +99,7 @@ class RequestParser
 
             if (!isset($this->matchedSource))
             {
-                throw new Exception('Unable to find any zones for command');
+                throw new Exception('Unable to find any sources for command');
             }
         }
     }
