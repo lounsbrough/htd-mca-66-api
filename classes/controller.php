@@ -118,26 +118,24 @@ class Controller
     
     public function setSource($zones, $source)
     {
-        if ($zones != null) {
-            foreach ($zones as $zone)
-            {
-                $this->sendCommandToController($this->commands->setSource($zone, $source));
-            }
-        } 
-        else
+        $zones = $zones ?? array_map(function($e) { return $e['number']; }, $this->appSettings->enabledZones);
+
+        foreach ($zones as $zone)
         {
-            $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
-            foreach ($this->appSettings->enabledZones as $definedZone)
-            {
-                $zonePoweredOn = $zoneStates[$definedZone['number']]['power'];
-                
-                if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($definedZone['number'], true));
-                $this->sendCommandToController($this->commands->setSource($definedZone['number'], $source));
-                if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($definedZone['number'], false));
-            }
+            $this->setInputSourceBypassingPowerState($zone, $source);
         }
 
-        return ($zones != null ? 'Zones {'.implode($zones, ',').'}' : 'All zones').' set to source {'.$source.'}';
+        return 'Zones {'.implode($zones, ',').'} set to source {'.$source.'}';
+    }
+
+    private function setInputSourceBypassingPowerState($zone, $source)
+    {
+        $zoneStates = $this->zones->parseZoneState($this->sendCommandToController($this->commands->getZoneStates()));
+        $zonePoweredOn = $zoneStates[$zone]['power'];
+
+        if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($zone, true));
+        $this->sendCommandToController($this->commands->setSource($zone, $source));
+        if (!$zonePoweredOn) $this->sendCommandToController($this->commands->setPower($zone, false));
     }
 
     private function processVolumeShift($zones, $shifts)
